@@ -13,20 +13,26 @@ export const Participants = () => [
     getParams: Fun(
       [],
       Object({
-        foo: UInt,
+        recvAddr: Address,
       })
     ),
   }),
-  ParticipantClass("Relay", {}),
+  Participant("Relay", {}),
 ];
-export const Views = () => [];
+export const Views = () => [
+  View({
+    manager: Address,
+    receiver: Address,
+    token: Token
+  })
+];
 export const Api = () => [];
 export const App = (map) => {
-  const [{ amt, ttl }, [addr, _], [Alice, Relay], _, _, _] = map;
+  const [{ amt, ttl, tok0: token }, [addr, _], [Alice, Relay], [v], _, _] = map;
   Alice.only(() => {
-    const { foo } = declassify(interact.getParams());
+    const { recvAddr } = declassify(interact.getParams());
   });
-  Alice.publish(foo).pay(amt+foo)
+  Alice.publish(recvAddr).pay(amt)
   .timeout(relativeTime(ttl), () => {
     Anybody.publish()
     transfer(balance()).to(addr)
@@ -34,8 +40,12 @@ export const App = (map) => {
     exit();
   })
   transfer(amt).to(addr);
+  v.manager.set(Alice);
+  v.receiver.set(recvAddr);
+  v.token.set(token);
   commit();
   Relay.publish();
+  transfer(balance(token), token).to(recvAddr);
   transfer(balance()).to(addr)
   commit();
   exit();
